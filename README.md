@@ -33,4 +33,5 @@ Update `.env` (or `.env.local`) with:
 
 - The app now depends on the backend WebSocket instead of hitting Gemini directly in the browser.
 - Microphone access prompts when connecting; handle permission denials gracefully in the UI.
-test
+
+test2
