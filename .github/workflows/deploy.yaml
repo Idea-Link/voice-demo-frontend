@@ -1,0 +1,39 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Determine Environment
+        id: env
+        run: |
+          echo "BRANCH=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+      - name: Deploy to Server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ vars.PRODUCTION_SERVER_IP }}
+          port: ${{ vars.PRODUCTION_SERVER_PORT }}
+          username: ${{ vars.PRODUCTION_SERVER_USER }}
+          key: ${{ secrets.PRODUCTION_SERVER_PRIVATE_KEY }}
+          script: |
+
+            if [ "${{ steps.env.outputs.BRANCH }}" = "master" ]; then
+              cd frontend_repo
+              source ~/.bashrc
+              git fetch
+              git pull
+              npm install
+              npm run build
+            else
+              echo "Unknown branch: ${{ steps.env.outputs.BRANCH }}"
+              exit 1
+            fi
