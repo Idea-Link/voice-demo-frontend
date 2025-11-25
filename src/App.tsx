@@ -127,16 +127,6 @@ function App() {
           </button>
         )}
 
-        {/* Transcript Drawer */}
-        <div className="w-full h-48 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200 overflow-hidden flex flex-col shadow-2xl">
-           <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider flex justify-between">
-             <span>Live Transcript</span>
-             <span className="text-[#ff594e]">IdeaLink Knowledge Active</span>
-           </div>
-           <div className="flex-1 relative">
-             <TranscriptionLog logs={logs} />
-           </div>
-        </div>
       </div>
 
     </div>
