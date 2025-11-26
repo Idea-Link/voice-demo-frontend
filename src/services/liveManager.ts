@@ -215,6 +215,9 @@ export class LiveManager {
           this.rejectReady?.(new Error(message.payload.message));
         }
         break;
+      case SocketMessageType.SERVER_AUDIO_FLUSH:
+        this.flushAudioQueue();
+        break;
       case SocketMessageType.HEARTBEAT:
         this.send({
           type: SocketMessageType.HEARTBEAT,
@@ -255,6 +258,19 @@ export class LiveManager {
     source.start(startAt);
     this.nextStartTime = startAt + buffer.duration;
     this.sources.add(source);
+  }
+
+  private flushAudioQueue() {
+    this.sources.forEach((source) => {
+      try {
+        source.stop();
+      } catch (e) {
+      }
+    });
+    this.sources.clear();
+    if (this.outputAudioContext) {
+      this.nextStartTime = this.outputAudioContext.currentTime;
+    }
   }
 
   private send(message: ClientSocketMessage) {
