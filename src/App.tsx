@@ -4,7 +4,11 @@ import { TranscriptionLog } from './components/TranscriptionLog';
 import { LiveManager } from './services/liveManager';
 import { ConnectionState, LogMessage } from './types/conversation';
 
-function App() {
+interface AppProps {
+  appRoute?: string;
+}
+
+function App({ appRoute }: AppProps) {
   const [state, setState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
   const [volume, setVolume] = useState(0);
   const [logs, setLogs] = useState<LogMessage[]>([]);
@@ -41,12 +45,14 @@ function App() {
       onVolumeUpdate: (input, output) => {
         setVolume(output); // Visualize the model's output primarily
       }
+    }, {
+      appRoute
     });
 
     liveManagerRef.current = manager;
     await manager.connect();
     setState(ConnectionState.CONNECTED);
-  }, [addLog]);
+  }, [addLog, appRoute]);
 
   // Cleanup on unmount
   useEffect(() => {

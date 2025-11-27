@@ -16,6 +16,7 @@ export enum ConnectionState {
 export interface ClientHelloPayload {
   locale: string;
   sampleRate: number;
+  appRoute?: string;
 }
 
 export interface ClientAudioChunkPayload {

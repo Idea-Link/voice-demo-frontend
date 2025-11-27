@@ -18,6 +18,7 @@ interface LiveManagerCallbacks {
 
 interface LiveManagerOptions {
   backendUrl?: string;
+  appRoute?: string;
 }
 
 const INPUT_SAMPLE_RATE = 16000;
@@ -43,6 +44,7 @@ export class LiveManager {
   private socketReady = false;
   private seq = 0;
   private backendUrl: string;
+  private appRoute?: string;
 
   constructor(
     private callbacks: LiveManagerCallbacks,
@@ -55,6 +57,7 @@ export class LiveManager {
       envWs ??
       envHttp ??
       'http://localhost:4000';
+    this.appRoute = options?.appRoute;
   }
 
   public async connect() {
@@ -151,7 +154,8 @@ export class LiveManager {
       type: SocketMessageType.CLIENT_HELLO,
       payload: {
         locale: navigator.language || 'en-US',
-        sampleRate: INPUT_SAMPLE_RATE
+        sampleRate: INPUT_SAMPLE_RATE,
+        appRoute: this.appRoute
       },
       timestamp: Date.now()
     };
