@@ -3,7 +3,8 @@ import { Visualizer } from './components/Visualizer';
 import { TranscriptionLog } from './components/TranscriptionLog';
 import { LiveManager } from './services/liveManager';
 import { ConnectionState, LogMessage } from './types/conversation';
-
+import logo from './logo.svg';
+ 
 interface AppProps {
   appRoute?: string;
 }
@@ -68,10 +69,8 @@ function App({ appRoute }: AppProps) {
       
       {/* Header / Title */}
       <div className="absolute top-0 left-0 w-full z-20 p-6 flex justify-between items-start pointer-events-none">
-        <div>
-          <h1 className="text-3xl font-bold text-[#ff594e]">
-            IdeaLink
-          </h1>
+        <div className="flex flex-col items-center justify-center">
+          <img src={logo} alt="IdeaLink Logo" className="w-30 h-30" />
           <p className="text-slate-500 text-sm mt-1 font-light">Voice AI Assistant</p>
         </div>
         
