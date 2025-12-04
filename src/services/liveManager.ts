@@ -8,6 +8,7 @@ import {
   decodePcm16Base64ToBuffer,
   float32ToPcm16Base64
 } from '../utils/audioUtils';
+import { ConversationRecorder } from '../utils/conversationRecorder';
 
 interface LiveManagerCallbacks {
   onLog: (role: 'user' | 'model' | 'system', text: string) => void;
@@ -45,6 +46,10 @@ export class LiveManager {
   private seq = 0;
   private backendUrl: string;
   private appRoute?: string;
+  private conversationRecorder: ConversationRecorder | null = null;
+  private sessionId: string | null = null;
+  private recordingToken: string | null = null;
+  private botAudioDestination: MediaStreamAudioDestinationNode | null = null;
 
   constructor(
     private callbacks: LiveManagerCallbacks,
@@ -102,6 +107,10 @@ export class LiveManager {
     this.analyser.fftSize = 256;
     this.outputNode.connect(this.analyser);
     this.outputNode.connect(this.outputAudioContext.destination);
+    
+    this.botAudioDestination = this.outputAudioContext.createMediaStreamDestination();
+    this.outputNode.connect(this.botAudioDestination);
+    
     this.startVolumeMonitoring();
 
     this.inputAudioContext = new AudioContext({ sampleRate: INPUT_SAMPLE_RATE });
@@ -120,6 +129,15 @@ export class LiveManager {
     };
     source.connect(this.processor);
     this.processor.connect(this.inputAudioContext.destination);
+
+    this.conversationRecorder = new ConversationRecorder(OUTPUT_SAMPLE_RATE);
+    
+    if (this.stream) {
+      this.conversationRecorder.connectMicrophoneStream(this.stream);
+    }
+    if (this.botAudioDestination) {
+      this.conversationRecorder.connectBotAudioStream(this.botAudioDestination.stream);
+    }
   }
 
   private openSocket() {
@@ -191,6 +209,18 @@ export class LiveManager {
     switch (message.type) {
       case SocketMessageType.SERVER_READY:
         this.callbacks.onLog('system', 'Prisijungta prie IdeaLink asistento');
+        
+        if (message.payload.sessionId) {
+          this.sessionId = message.payload.sessionId;
+        }
+        if (message.payload.recordingToken) {
+          this.recordingToken = message.payload.recordingToken;
+        }
+        
+        if (this.conversationRecorder && !this.conversationRecorder.isCurrentlyRecording()) {
+          this.conversationRecorder.startRecording();
+        }
+        
         this.resolveReady?.();
         break;
       case SocketMessageType.SERVER_STATUS:
@@ -325,8 +355,20 @@ export class LiveManager {
     }
   }
 
-  public disconnect() {
+  public async disconnect() {
     const hadSocket = Boolean(this.socket);
+    if (this.conversationRecorder && this.conversationRecorder.isCurrentlyRecording()) {
+      try {
+        const recordingBlob = await this.conversationRecorder.stopRecording();
+        if (recordingBlob) {
+          await this.uploadRecording(recordingBlob);
+        }
+      } catch (error) {
+        console.error('Failed to save recording:', error);
+        this.callbacks.onError('Failed to save conversation recording');
+      }
+    }
+    
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.send({
         type: SocketMessageType.CLIENT_END,
@@ -359,6 +401,10 @@ export class LiveManager {
       this.stream = null;
     }
 
+    if (this.botAudioDestination) {
+      this.botAudioDestination = null;
+    }
+
     if (this.inputAudioContext) {
       this.inputAudioContext.close();
       this.inputAudioContext = null;
@@ -369,9 +415,16 @@ export class LiveManager {
       this.outputAudioContext = null;
     }
 
+    if (this.conversationRecorder) {
+      this.conversationRecorder.dispose();
+      this.conversationRecorder = null;
+    }
+
     this.stopVolumeMonitoring();
     this.nextStartTime = 0;
     this.seq = 0;
+    this.sessionId = null;
+    this.recordingToken = null;
   }
 
   private resolveWsUrl() {
@@ -388,6 +441,54 @@ export class LiveManager {
   private nextSeq() {
     this.seq += 1;
     return this.seq;
+  }
+
+  private async uploadRecording(blob: Blob): Promise<void> {
+    if (!this.recordingToken) {
+      console.warn('No recording token available - skipping upload');
+      this.callbacks.onLog('system', 'Recording not saved: authentication required');
+      return;
+    }
+
+    const formData = new FormData();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `conversation_${timestamp}.webm`;
+    
+    formData.append('audio', blob, filename);
+    
+    if (this.sessionId) {
+      formData.append('sessionId', this.sessionId);
+    }
+    
+    formData.append('timestamp', new Date().toISOString());
+    formData.append('appRoute', this.appRoute || 'default');
+
+    const uploadUrl = `${import.meta.env.VITE_BACKEND_URL}/api/recordings`;
+    
+    try {
+      this.callbacks.onLog('system', 'Uploading conversation recording...');
+      
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'X-Recording-Token': this.recordingToken,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Authentication failed');
+        }
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      this.callbacks.onLog('system', 'Recording saved successfully');
+    } catch (error) {
+      console.error('Failed to upload recording:', error);
+      throw error;
+    }
   }
 }
 

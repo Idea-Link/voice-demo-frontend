@@ -20,9 +20,9 @@ function App({ appRoute }: AppProps) {
     setLogs(prev => [...prev, { role, text, timestamp: new Date() }]);
   }, []);
 
-  const handleDisconnect = useCallback(() => {
+  const handleDisconnect = useCallback(async () => {
     if (liveManagerRef.current) {
-      liveManagerRef.current.disconnect();
+      await liveManagerRef.current.disconnect();
     }
     setState(ConnectionState.DISCONNECTED);
     setVolume(0);
@@ -59,7 +59,10 @@ function App({ appRoute }: AppProps) {
   useEffect(() => {
     return () => {
       if (liveManagerRef.current) {
-        liveManagerRef.current.disconnect();
+        // Fire and forget - cleanup happens anyway
+        liveManagerRef.current.disconnect().catch(err => {
+          console.error('Error during cleanup disconnect:', err);
+        });
       }
     };
   }, []);

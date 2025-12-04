@@ -27,6 +27,7 @@ export interface ClientAudioChunkPayload {
 
 export interface ServerReadyPayload {
   sessionId: string;
+  recordingToken?: string;
 }
 
 export interface ServerAudioChunkPayload {
