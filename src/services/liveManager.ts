@@ -470,9 +470,9 @@ export class LiveManager {
       
       const response = await fetch(uploadUrl, {
         method: 'POST',
-        headers: {
-          'X-Recording-Token': this.recordingToken,
-        },
+        // headers: {
+        //   'X-Recording-Token': this.recordingToken,
+        // },
         body: formData,
       });
 
