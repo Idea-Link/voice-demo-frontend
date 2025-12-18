@@ -10,7 +10,7 @@ if (!rootElement) {
 const path = window.location.pathname;
 const root = ReactDOM.createRoot(rootElement);
 
-if (path === '/' || path === '/outbound') {
+if (path === '/' || path === '/outbound' || path === '/recruiting') {
   const appRoute = path === '/' ? undefined : path;
   root.render(
     <React.StrictMode>
